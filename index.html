@@ -1,0 +1,120 @@
+     
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PM2.5 Map of Thailand</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        #map {
+            width: 600px;
+            height: 82vh;
+            border: 2px solid #ccc;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .box {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        @media only screen and (max-width: 600px) {
+            #map {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+        <div style="text-align: center; padding: 10px;">
+            <p style="font-size: 1.5rem;">ค่าฝุ่น PM2.5 ในประเทศไทย</p>
+            <p style="font-size: 1rem;">ข้อมูลจากสถานีวัดคุณภาพอากาศทั่วประเทศ</p>
+        </div>
+
+        <div class="box">
+            <div id="map"></div>
+        </div>
+
+
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const apiToken = "331adbe96876e324c3011bb5ed443733660426fa"; // ใส่ API Token ของคุณ
+
+        // URL ของ API สำหรับดึงข้อมูลสถานีในประเทศไทย
+        const apiUrl = 'https://api.waqi.info/map/bounds/?latlng=5.5,97.5,20.5,105.8&token=' + apiToken;
+
+        // กำหนดพิกัดขอบเขตของประเทศไทย (bounding box)
+        const thailandBounds = [
+            [5.5, 97.5],  // พิกัดตะวันตกเฉียงใต้ (Southwest)
+            [20.5, 105.8] // พิกัดตะวันออกเฉียงเหนือ (Northeast)
+        ];
+
+        // สร้างแผนที่และตั้งค่าให้อยู่ในขอบเขตประเทศไทย
+        const map = L.map('map').fitBounds(thailandBounds);
+        L.tileLayer('https://mt1.google.com/vt/lyrs=m&hl=th&x={x}&y={y}&z={z}', {
+            maxZoom: 18,
+            attribution: 'แผนที่ © Google'
+        }).addTo(map);
+
+        // ฟังก์ชันกำหนดสีของ Marker ตามค่า AQI
+        function getMarkerColor(aqi) {
+            if (aqi <= 50) return 'green'; // ดีมาก
+            if (aqi <= 100) return 'yellow'; // ปานกลาง
+            if (aqi <= 150) return 'orange'; // เริ่มมีผลต่อสุขภาพ
+            return 'red'; // อันตราย
+        }
+
+        // ฟังก์ชันสร้าง Marker พร้อมสี
+        function createColoredIcon(color) {
+            return L.divIcon({
+                className: "custom-icon",
+                html: `<div style="background-color: ${color}; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white;"></div>`,
+                iconSize: [20, 20],
+                iconAnchor: [10, 10],
+            });
+        }
+
+        // ดึงข้อมูลสถานีทั้งหมดในประเทศไทย
+        async function fetchAllStations() {
+            try {
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+
+                if (data.status === "ok" && data.data.length > 0) {
+                    data.data.forEach(station => {
+                        const { lat, lon, aqi, station: stationInfo } = station;
+
+                        const markerColor = getMarkerColor(aqi); // กำหนดสีจากค่า AQI
+                        const customIcon = createColoredIcon(markerColor); // สร้าง Marker
+
+                        // เพิ่ม Marker บนแผนที่
+                        L.marker([lat, lon], { icon: customIcon }).addTo(map)
+                            .bindPopup(`
+                <strong>สถานที่:</strong> ${stationInfo.name}<br>
+                <strong>ค่าฝุ่น PM2.5 (AQI):</strong> ${aqi || "ไม่ทราบค่า"}<br>
+                <strong>ตำแหน่ง:</strong> (${lat}, ${lon})
+              `);
+                    });
+                } else {
+                    alert("ไม่พบข้อมูลสถานีในพื้นที่ประเทศไทย");
+                }
+            } catch (error) {
+                console.error("Error fetching data:", error);
+                alert("เกิดข้อผิดพลาดในการเชื่อมต่อ API!");
+            }
+        }
+
+        fetchAllStations();
+    </script>
+</body>
+
+</html>
+
+
+    
